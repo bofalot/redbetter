@@ -1,4 +1,4 @@
-FROM python:2-slim
+FROM python:3.9.21-slim
 
 RUN set -x \
   && apt-get update \
@@ -9,11 +9,12 @@ RUN set -x \
 WORKDIR /app
 ADD requirements.txt /app
 
-RUN set -x \
-  && pip install -r requirements.txt
+RUN set -x && pip install -r requirements.txt
 
 ADD . /app
 
 USER nobody
 
-CMD ["/app/redactedbetter"]
+EXPOSE 9725
+
+CMD ["/app/redactedbetter --server"]

@@ -1,35 +1,16 @@
 #!/usr/bin/env python
-import re
 import os
+import re
 import json
 import time
+
 import requests
-import mechanize
-import HTMLParser
-from cStringIO import StringIO
+import html
 
 headers = {
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'User-Agent': 'REDBetter crawler',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Encoding': 'gzip,deflate,sdch',
-    'Accept-Language': 'en-US,en;q=0.8',
-    'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3'}
-
-# gazelle is picky about case in searches with &media=x
-media_search_map = {
-    'cd': 'CD',
-    'dvd': 'DVD',
-    'vinyl': 'Vinyl',
-    'soundboard': 'Soundboard',
-    'sacd': 'SACD',
-    'dat': 'DAT',
-    'web': 'WEB',
-    'blu-ray': 'Blu-ray'
-    }
-
-lossless_media = set(media_search_map.keys())
+    'Accept-Encoding': 'gzip,deflate,br',
+    'Accept': 'application/json'
+}
 
 formats = {
     'FLAC': {
@@ -43,11 +24,7 @@ formats = {
     '320': {
         'format' : 'MP3',
         'encoding' : '320'
-    },
-    'V2': {
-        'format' : 'MP3',
-        'encoding' : 'V2 (VBR)'
-    },
+    }
 }
 
 def allowed_transcodes(torrent):
@@ -58,230 +35,183 @@ def allowed_transcodes(torrent):
     else:
         return formats.keys()
 
-class LoginException(Exception):
-    pass
+def release_url(group_id, torrent_id):
+    return "https://redacted.sh/torrents.php?id=%s&torrentid=%s#torrent%s" % (group_id, torrent_id, torrent_id)
+
+def permalink(torrent_id):
+    return "https://redacted.sh/torrents.php?torrentid=%s" % torrent_id
+
+def unescape(text):
+    return html.unescape(text)
 
 class RequestException(Exception):
     pass
 
 class RedactedAPI:
-    def __init__(self, username=None, password=None, session_cookie=None):
+    def __init__(self, api_key, delay_in_seconds=2):
         self.session = requests.Session()
         self.session.headers.update(headers)
-        self.username = username
-        self.password = password
-        self.session_cookie = session_cookie
-        self.authkey = None
-        self.passkey = None
-        self.userid = None
-        self.tracker = "https://flacsfor.me/"
+        self.auth_header={"Authorization": api_key}
+        self.session.headers.update(self.auth_header)
+        self.tracker = "https://flacsfor.me"
+        self.ajax_url = 'https://redacted.sh/ajax.php'
         self.last_request = time.time()
-        self.rate_limit = 2.0 # seconds between requests
-        self._login()
+        self.rate_limit = delay_in_seconds # seconds between requests
+        account_info = self.__request("index")
+        self.user_id = account_info["id"]
+        self.passkey = account_info["passkey"]
 
-    def _login(self):
-        if self.session_cookie is not None:
-            try:
-                self._login_cookie()
-            except:
-                print "WARNING: session cookie attempted and failed"
-                self._login_username_password()
-        else:
-            self._login_username_password()
-
-    def _login_cookie(self):
-        mainpage = 'https://redacted.ch/';
-        cookiedict = {"session": self.session_cookie}
-        cookies = requests.utils.cookiejar_from_dict(cookiedict)
-
-        self.session.cookies.update(cookies)
-        r = self.session.get(mainpage)
-        try:
-            accountinfo = self.request('index')
-            self.authkey = accountinfo['authkey']
-            self.passkey = accountinfo['passkey']
-            self.userid = accountinfo['id']
-        except:
-            raise LoginException
-
-    def _login_username_password(self):
-        '''Logs in user and gets authkey from server'''
-
-        if not self.username or self.username == "":
-            print "WARNING: username authentication attempted, but username not set, skipping."
-            raise LoginException
-        loginpage = 'https://redacted.ch/login.php'
-        data = {'username': self.username,
-                'password': self.password}
-        r = self.session.post(loginpage, data=data)
-        if r.status_code != 200:
-            raise LoginException
-        accountinfo = self.request('index')
-        self.authkey = accountinfo['authkey']
-        self.passkey = accountinfo['passkey']
-        self.userid = accountinfo['id']
-        try:
-            accountinfo = self.request('index')
-            self.authkey = accountinfo['authkey']
-            self.passkey = accountinfo['passkey']
-            self.userid = accountinfo['id']
-        except:
-            raise LoginException
-
-    def logout(self):
-        self.session.get("https://redacted.ch/logout.php?auth=%s" % self.authkey)
-
-    def request(self, action, **kwargs):
-        '''Makes an AJAX request at a given action page'''
+    def __request(self, action, **kwargs):
+        """Makes an AJAX request at a given action page"""
         while time.time() - self.last_request < self.rate_limit:
             time.sleep(0.1)
 
-        ajaxpage = 'https://redacted.ch/ajax.php'
         params = {'action': action}
-        if self.authkey:
-            params['auth'] = self.authkey
         params.update(kwargs)
-        r = self.session.get(ajaxpage, params=params, allow_redirects=False)
+        r = self.session.get(self.ajax_url, params=params, allow_redirects=False)
         self.last_request = time.time()
         try:
             parsed = json.loads(r.content)
             if parsed['status'] != 'success':
-                #raise RequestException
                 return None
             return parsed['response']
         except ValueError:
             raise RequestException
 
-    def request_html(self, action, **kwargs):
-        while time.time() - self.last_request < self.rate_limit:
-            time.sleep(0.1)
-
-        ajaxpage = 'https://redacted.ch/' + action
-        if self.authkey:
-            kwargs['auth'] = self.authkey
-        r = self.session.get(ajaxpage, params=kwargs, allow_redirects=False)
-        self.last_request = time.time()
-        return r.content
-
-    def get_artist(self, id=None, format='MP3', best_seeded=True):
-        res = self.request('artist', id=id)
-        torrentgroups = res['torrentgroup']
-        keep_releases = []
-        for release in torrentgroups:
-            torrents = release['torrent']
-            best_torrent = torrents[0]
-            keeptorrents = []
-            for t in torrents:
-                if t['format'] == format:
-                    if best_seeded:
-                        if t['seeders'] > best_torrent['seeders']:
-                            keeptorrents = [t]
-                            best_torrent = t
-                    else:
-                        keeptorrents.append(t)
-            release['torrent'] = list(keeptorrents)
-            if len(release['torrent']):
-                keep_releases.append(release)
-        res['torrentgroup'] = keep_releases
-        return res
-
-    def snatched(self, skip=None, media=lossless_media):
-        if not media.issubset(lossless_media):
-            raise ValueError('Unsupported media type %s' % (media - lossless_media).pop())
-
-        # gazelle doesn't currently support multiple values per query
-        # parameter, so we have to search a media type at a time;
-        # unless it's all types, in which case we simply don't specify
-        # a 'media' parameter (defaults to all types).
-
-        if media == lossless_media:
-            media_params = ['']
+    def seeding(self, skip=None):
+        response = self.__request("user_torrents", type="seeding", id=self.user_id)
+        if response is None:
+            return None
         else:
-            media_params = ['&media=%s' % media_search_map[m] for m in media]
+            torrents = response["seeding"]
 
-        url = 'https://redacted.ch/torrents.php?type=snatched&userid=%s&format=FLAC' % self.userid
-        for mp in media_params:
-            page = 1
-            done = False
-            pattern = re.compile('torrents.php\?id=(\d+)&amp;torrentid=(\d+)')
-            while not done:
-                content = self.session.get(url + mp + "&page=%s" % page).text
-                for groupid, torrentid in pattern.findall(content):
-                    if skip is None or torrentid not in skip:
-                        yield int(groupid), int(torrentid)
-                done = 'Next &gt;' not in content
-                page += 1
+        not_skipped = torrents if skip is None else filter(lambda t: t["torrentId"] not in skip, torrents)
+        return map(lambda t: [int(t["groupId"]), int(t["torrentId"])], not_skipped)
+
+    def torrent_group(self, group_id):
+        response = self.__request("torrentgroup", id=group_id)
+        if response is None:
+            return None
+        else:
+            group = response["group"]
+            torrents = response["torrents"]
+
+        name = group["name"]
+        if len(group["musicInfo"]["artists"]) > 1:
+            artist = "Various Artists"
+        else:
+            artist = group["musicInfo"]["artists"][0]["name"]
+        year = str(group["year"])
+
+        return {"name": name, "artist": artist, "year": year, "torrents": torrents, "group": group}
+
+    def torrent(self, torrent_id):
+        return self.__request("torrent", id=torrent_id)
+
 
     def upload(self, group, torrent, new_torrent, format, description=[]):
-        url = "https://redacted.ch/upload.php?groupid=%s" % group['group']['id']
-        response = self.session.get(url)
-        forms = mechanize.ParseFile(StringIO(response.text.encode('utf-8')), url)
-        form = forms[-1]
-        form.find_control('file_input').add_file(open(new_torrent), 'application/x-bittorrent', os.path.basename(new_torrent))
-        #if torrent['remastered']:
-        #    form.find_control('remaster').set_single('1')
-        form['remaster_year'] = str(torrent['remasterYear'])
-        form['remaster_title'] = torrent['remasterTitle']
-        form['remaster_record_label'] = torrent['remasterRecordLabel']
-        form['remaster_catalogue_number'] = torrent['remasterCatalogueNumber']
-        form.find_control('format').set('1', formats[format]['format'])
-        form.find_control('bitrate').set('1', formats[format]['encoding'])
-        form.find_control('media').set('1', torrent['media'])
 
+# dryrun - (bool) Only return the derived information from the posted data without actually uploading the torrent.
+# file_input - (file) .torrent file contents
+# groupid - (int) torrent groupID (ie album) this belongs to
+
+# Todo: leave below out as all from group, and see if RED will accept the upload with just the group ID
+# type - (int) index of category (Music, Audiobook, ...)
+# artists[] - (str)
+# importance[] - (int) index of artist type (Main, Guest, Composer, ...) One-indexed!
+# title - (str) Album title
+# year - (int) Album "Initial Year"
+# releasetype - (int) index of release type (Album, Soundtrack, EP, ...)
+# unknown - (bool) Unknown Release
+
+# Todo: figure out values for below - seem to be on the torrent, not the group
+# remaster_year - (int) Edition year
+# remaster_title - (str) Edition title
+# remaster_record_label - (str) Edition record label
+# remaster_catalogue_number - (str) Edition catalog number
+# scene - (bool) is this a scene release?
+# format - (str) MP3, FLAC, etc
+# bitrate - (str) 192, Lossless, Other, etc
+# other_bitrate - (str) bitrate if Other
+# vbr - (bool) other_bitrate is VBR
+# logfiles[] - (files) ripping log files
+# extra_file_#
+# extra_format[]
+# extra_bitrate[]
+# extra_release_desc[]
+# vanity_house - (bool) is this a Vanity House release?
+# media - (str) CD, DVD, Vinyl, etc
+# tags - (str)
+# image - (str) link to album art
+# album_desc - (str) Album description (ignored if new torrent is merged or added to existing group)
+# release_desc - (str) Release (torrent) description
+# desc - (str) Description for non-music torrents
+# requestid - (int) requestID being filled
+
+        form = {
+            'dryrun' : True,
+            'groupid' : group["group"]["id"],
+            #'type' : group["group"]["categoryId"],
+            #'artists' : [a["name"] for a in group["group"]["musicInfo"]["artists"]],
+            #'importance' : [1 for a in group["group"]["musicInfo"]["artists"]],
+            #'title' : group["name"],
+            #'year' : group["year"],
+            #'releaseType' : group["group"]["releaseType"],
+            #'unknown' : False,
+            'remaster_year': str(torrent['remasterYear']),
+            'remaster_title': torrent['remasterTitle'],
+            'remaster_record_label': torrent['remasterRecordLabel'],
+            'remaster_catalogue_number': torrent['remasterCatalogueNumber'],
+            'format': formats[format]['format'],
+            'bitrate': formats[format]['encoding'],
+            'media': torrent['media'],
+            'vbr': format == 'V0',
+            'logfiles': [],
+            'vanity_house': group['group']['vanityHouse']
+        }
         release_desc = '\n'.join(description)
         if release_desc:
             form['release_desc'] = release_desc
 
-        _, data, headers = form.click_request_data()
-        return self.session.post(url, data=data, headers=dict(headers))
+        # Open the torrent file and send the request
+        with open(new_torrent, "rb") as torrent_file:
+            files = {"file_input": torrent_file}
+            response = self.session.post(self.ajax_url, params={'action': "upload"}, data=form, files=files)
 
-    def set_24bit(self, torrent):
-        url = "https://redacted.ch/torrents.php?action=edit&id=%s" % torrent['id']
-        response = self.session.get(url)
-        forms = mechanize.ParseFile(StringIO(response.text.encode('utf-8')), url)
-        form = forms[-3]
-        form.find_control('bitrate').set('1', '24bit Lossless')
-        _, data, headers = form.click_request_data()
-        return self.session.post(url, data=data, headers=dict(headers))
+        return response
 
-    def release_url(self, group, torrent):
-        return "https://redacted.ch/torrents.php?id=%s&torrentid=%s#torrent%s" % (group['group']['id'], torrent['id'], torrent['id'])
-
-    def permalink(self, torrent):
-        return "https://redacted.ch/torrents.php?torrentid=%s" % torrent['id']
-
-    def get_better(self, search_type=3, tags=None):
-        if tags is None:
-            tags = []
-        data = self.request('better', method='transcode', type=search_type, search=' '.join(tags))
-        out = []
-        for row in data:
-            out.append({
-                'permalink': 'torrents.php?id={}'.format(row['torrentId']),
-                'id': row['torrentId'],
-                'torrent': row['downloadUrl'],
-            })
-        return out
-
-    def get_torrent(self, torrent_id):
-        '''Downloads the torrent at torrent_id using the authkey and passkey'''
-        while time.time() - self.last_request < self.rate_limit:
-            time.sleep(0.1)
-
-        torrentpage = 'https://redacted.ch/torrents.php'
-        params = {'action': 'download', 'id': torrent_id}
-        if self.authkey:
-            params['authkey'] = self.authkey
-            params['torrent_pass'] = self.passkey
-        r = self.session.get(torrentpage, params=params, allow_redirects=False)
-
-        self.last_request = time.time() + 2.0
-        if r.status_code == 200 and 'application/x-bittorrent' in r.headers['content-type']:
-            return r.content
-        return None
-
-    def get_torrent_info(self, id):
-        return self.request('torrent', id=id)['torrent']
-
-def unescape(text):
-    return HTMLParser.HTMLParser().unescape(text)
+#
+# These functions are only used in torrent-crawl.py, which I'm not using yet
+#
+#    def get_better(self, search_type=3, tags=None):
+#        if tags is None:
+#            tags = []
+#        data = self.__request('better', method='transcode', type=search_type, search=' '.join(tags))
+#        out = []
+#        for row in data:
+#            out.append({
+#                'permalink': 'torrents.php?id={}'.format(row['torrentId']),
+#                'id': row['torrentId'],
+#                'torrent': row['downloadUrl'],
+#            })
+#        return out
+#
+#    def get_torrent(self, torrent_id):
+#        '''Downloads the torrent at torrent_id using the authkey and passkey'''
+#        while time.time() - self.last_request < self.rate_limit:
+#            time.sleep(0.1)
+#
+#        torrentpage = 'https://redacted.sh/torrents.php'
+#        params = {'action': 'download', 'id': torrent_id}
+#        if self.authkey:
+#            params['authkey'] = self.authkey
+#            params['torrent_pass'] = self.passkey
+#        r = self.session.get(torrentpage, params=params, allow_redirects=False)
+#
+#        self.last_request = time.time() + 2.0
+#        if r.status_code == 200 and 'application/x-bittorrent' in r.headers['content-type']:
+#            return r.content
+#        return None
+#
+#    def get_torrent_info(self, id):
+#        return self.__request('torrent', id=id)['torrent']

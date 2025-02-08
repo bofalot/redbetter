@@ -1,12 +1,19 @@
-version: '3'
 services:
   redbetter:
-    build:
-      context: .
+    image: bofalot/redbetter:latest
+    container_name: redbetter
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/Downloads:/downloads
+      - /mnt/user/appdata/redbetter:/config
+    environment:
+      TZ: 'Asia/Seoul'
+    ports:
+      - '9725:9725'
     command:
-      - /app/redactedbetter
+      - /app/main.py
       - --config
-      - /config/config
+      - /config/config.ini
       - --cache
       - /config/cache
-    image: mattrob1nson/redbetter:latest
+

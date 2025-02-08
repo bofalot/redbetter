@@ -1,4 +1,4 @@
-# Metadata tag support for redactedbetter.
+# Metadata tag support for redactedbetter.py.
 #
 # Copyright (c) 2013 Milky Joe <milkiejoe@gmail.com>
 #
@@ -22,7 +22,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Simple tagging for redactedbetter.
+"""Simple tagging for redactedbetter.py.
 """
 
 import os.path
@@ -30,16 +30,10 @@ import re
 import mutagen
 import mutagen.flac
 import mutagen.mp3
+import mutagen.id3
 from mutagen.easyid3 import EasyID3
 
-numeric_tags = set([
-        'tracknumber',
-        'discnumber',
-        'tracktotal',
-        'totaltracks',
-        'disctotal',
-        'totaldiscs',
-        ])
+numeric_tags = {'tracknumber', 'discnumber', 'tracktotal', 'totaltracks', 'disctotal', 'totaldiscs'}
 
 class TaggingException(Exception):
     pass
@@ -68,14 +62,14 @@ def scrub_tag(name, value):
 
     # Numeric tags should not be '0' (but tracknumber 0 is OK, e.g.,
     # hidden track).
-    if name in numeric_tags - set(['tracknumber']):
+    if name in numeric_tags - {'tracknumber'}:
         if re.match(r"""0+(/.*)?$""", scrubbed_value):
             return ''
 
     return scrubbed_value
 
 def check_tags(filename, check_tracknumber_format=True):
-    """Verify that the file has the required redacted.ch tags.
+    """Verify that the file has the required redacted.sh tags.
 
     Returns (True, None) if OK, (False, msg) if a tag is missing or
     invalid.
@@ -84,21 +78,19 @@ def check_tags(filename, check_tracknumber_format=True):
     info = mutagen.File(filename, easy=True)
     for tag in ['artist', 'album', 'title', 'tracknumber']:
         if tag not in info.keys():
-            return (False, '"%s" has no %s tag' % (filename, tag))
+            return False, '"%s" has no %s tag' % (filename, tag)
         elif info[tag] == [u'']:
-            return (False, '"%s" has an empty %s tag' % (filename, tag))
+            return False, '"%s" has an empty %s tag' % (filename, tag)
 
     if check_tracknumber_format:
         tracknumber = info['tracknumber'][0]
         if not valid_fractional_tag(tracknumber):
-            return (False, '"%s" has a malformed tracknumber tag ("%s")' % (filename, tracknumber))
+            return False, '"%s" has a malformed tracknumber tag ("%s")' % (filename, tracknumber)
 
-    return (True, None)
+    return True, None
 
 def copy_tags(flac_file, transcode_file):
     flac_info = mutagen.flac.FLAC(flac_file)
-    transcode_info = None
-    valid_key_fn = None
     transcode_ext = os.path.splitext(transcode_file)[1].lower()
 
     if transcode_ext == '.flac':
@@ -114,7 +106,7 @@ def copy_tags(flac_file, transcode_file):
 
     for tag in filter(valid_key_fn, flac_info):
         # scrub the FLAC tags, just to be on the safe side.
-        values = map(lambda v: scrub_tag(tag,v), flac_info[tag])
+        values = [scrub_tag(tag,v) for v in flac_info[tag]]
         if values and values != [u'']:
             transcode_info[tag] = values
 
@@ -151,14 +143,14 @@ def copy_tags(flac_file, transcode_file):
 
     transcode_info.save()
 
-# EasyID3 extensions for redactedbetter.
+# EasyID3 extensions for redactedbetter.py.
 
 for key, frameid in {
     'albumartist': 'TPE2',
     'album artist': 'TPE2',
     'grouping': 'TIT1',
     'content group': 'TIT1',
-    }.iteritems():
+    }.items():
     EasyID3.RegisterTextKey(key, frameid)
 
 def comment_get(id3, _):

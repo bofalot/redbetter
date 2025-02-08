@@ -2,7 +2,6 @@
 import errno
 import multiprocessing
 import os
-import pipes
 import re
 import shlex
 import shutil
@@ -17,7 +16,6 @@ import tagging
 encoders = {
     '320':  {'enc': 'lame', 'ext': '.mp3',  'opts': '-h -b 320 --ignore-tag-errors'},
     'V0':   {'enc': 'lame', 'ext': '.mp3',  'opts': '-V 0 --vbr-new --ignore-tag-errors'},
-    'V2':   {'enc': 'lame', 'ext': '.mp3',  'opts': '-V 2 --vbr-new --ignore-tag-errors'},
     'FLAC': {'enc': 'flac', 'ext': '.flac', 'opts': '--best'}
 }
 
@@ -147,8 +145,8 @@ def transcode_commands(output_format, resample, needed_sample_rate, flac_file, t
         transcoding_steps.append(flac_encoder)
 
     transcode_args = {
-        'FLAC' : pipes.quote(flac_file),
-        'FILE' : pipes.quote(transcode_file),
+        'FLAC' : shlex.quote(flac_file),
+        'FILE' : shlex.quote(transcode_file),
         'OPTS' : encoders[output_format]['opts'],
         'SAMPLERATE' : needed_sample_rate,
     }
@@ -156,12 +154,31 @@ def transcode_commands(output_format, resample, needed_sample_rate, flac_file, t
     if output_format == 'FLAC' and resample:
         commands = ['sox %(FLAC)s -G -b 16 %(FILE)s rate -v -L %(SAMPLERATE)s dither' % transcode_args]
     else:
-        commands = map(lambda cmd: cmd % transcode_args, transcoding_steps)
+        commands = [cmd % transcode_args for cmd in transcoding_steps]
     return commands
 
+
+# To ensure that a terminated pool subprocess terminates its
+# children, we make each pool subprocess a process group leader,
+# and handle SIGTERM by killing the process group. This will
+# ensure there are no lingering processes when a transcode fails
+# or is interrupted.
+def pool_initializer():
+    os.setsid()
+
+    def sigterm_handler(signum, frame):
+        # We're about to SIGTERM the group, including us; ignore
+        # it so we can finish this handler.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        pgid = os.getpgid(0)
+        os.killpg(pgid, signal.SIGTERM)
+        sys.exit(-signal.SIGTERM)
+
+    signal.signal(signal.SIGTERM, sigterm_handler)
+
 # Pool.map() can't pickle lambdas, so we need a helper function.
-def pool_transcode((flac_file, output_dir, output_format)):
-    return transcode(flac_file, output_dir, output_format)
+def pool_transcode(t):
+    return transcode(t[0], t[1], t[2])
 
 def transcode(flac_file, output_dir, output_format):
     '''
@@ -230,20 +247,20 @@ def transcode(flac_file, output_dir, output_format):
     return transcode_file
 
 def path_length_exceeds_limit(flac_dir, basename):
-    path_length = 0;
+    path_length = 0
     flac_files = locate(flac_dir, ext_matcher('.flac'))
 
-    source_directory_name = flac_dir[flac_dir.rfind('/') + 1:-1]
+    source_directory_name = flac_dir[flac_dir.rfind('/') + 1:]
 
     for root, dirs, files in os.walk(flac_dir):
         for name in files:
-            if len(basename + root[root.rfind(source_directory_name) + len(source_directory_name) + 1:-1] + "/" + name) > 180:
+            if len(basename + root[root.rfind(source_directory_name) + len(source_directory_name) + 1:] + '/' + name) > 180:
                     return True
 
     return False
 
 def get_suitable_basename(basename):
-	return basename.replace('\0', '').replace('\\', ',').replace('/', '').replace(':', ',').replace('*', '').replace('?', '').replace('"', '').replace('<', '').replace('>', '').replace('|', '').encode("utf-8")
+    return basename.replace('\0', '').replace('\\', ',').replace('/', '').replace(':', ',').replace('*', '').replace('?', '').replace('"', '').replace('<', '').replace('>', '').replace('|', '')
 
 def get_transcode_dir(flac_dir, output_dir, basename, output_format, resample):
     if output_format == "FLAC":
@@ -257,16 +274,14 @@ def get_transcode_dir(flac_dir, output_dir, basename, output_format, resample):
     basename = get_suitable_basename(basename)
     
     while path_length_exceeds_limit(flac_dir, basename):
-        basename = get_suitable_basename(raw_input("The file paths in this torrent exceed the 180 character limit. \n\
+        basename = get_suitable_basename(input("The file paths in this torrent exceed the 180 character limit. \n\
             The current directory name is: " + get_suitable_basename(basename.decode('utf-8')) + " \n\
             Please enter a shorter directory name: ").decode('utf-8'))
 
     return os.path.join(output_dir, basename)
 
 def transcode_release(flac_dir, output_dir, basename, output_format, max_threads=None):
-    '''
-    Transcode a FLAC release into another format.
-    '''
+    # Transcode a FLAC release into another format.
     flac_dir = os.path.abspath(flac_dir)
     output_dir = os.path.abspath(output_dir)
     flac_files = locate(flac_dir, ext_matcher('.flac'))
@@ -291,22 +306,6 @@ def transcode_release(flac_dir, output_dir, basename, output_format, max_threads
     else:
         raise TranscodeException('transcode output directory "%s" already exists' % transcode_dir)
 
-    # To ensure that a terminated pool subprocess terminates its
-    # children, we make each pool subprocess a process group leader,
-    # and handle SIGTERM by killing the process group. This will
-    # ensure there are no lingering processes when a transcode fails
-    # or is interrupted.
-    def pool_initializer():
-        os.setsid()
-        def sigterm_handler(signum, frame):
-            # We're about to SIGTERM the group, including us; ignore
-            # it so we can finish this handler.
-            signal.signal(signal.SIGTERM, signal.SIG_IGN)
-            pgid = os.getpgid(0)
-            os.killpg(pgid, signal.SIGTERM)
-            sys.exit(-signal.SIGTERM)
-        signal.signal(signal.SIGTERM, sigterm_handler)
-
     try:
         # create transcoding threads
         #
@@ -318,6 +317,7 @@ def transcode_release(flac_dir, output_dir, basename, output_format, max_threads
         # with a large timeout, as a workaround for a KeyboardInterrupt in
         # Pool.join(). c.f.,
         # http://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool?rq=1
+
         pool = multiprocessing.Pool(max_threads, initializer=pool_initializer)
         try:
             result = pool.map_async(pool_transcode, [(filename, os.path.dirname(filename).replace(flac_dir, transcode_dir), output_format) for filename in flac_files])
@@ -348,15 +348,15 @@ def transcode_release(flac_dir, output_dir, basename, output_format, max_threads
         shutil.rmtree(transcode_dir)
         raise
 
-def make_torrent(input_dir, output_dir, tracker, passkey, piece_length):
+def make_torrent(input_dir, output_dir, tracker, passkey, piece_length=15):
     torrent = os.path.join(output_dir, os.path.basename(input_dir)) + ".torrent"
     if not os.path.exists(os.path.dirname(torrent)):
-        os.path.makedirs(os.path.dirname(torrent))
-    tracker_url = '%(tracker)s%(passkey)s/announce' % {
+        os.mkdir(os.path.dirname(torrent))
+    tracker_url = '%(tracker)s/%(passkey)s/announce' % {
         'tracker' : tracker,
         'passkey' : passkey,
     }
-    command = ["mktorrent", "-s", "RED", "-p", "-a", tracker_url, "-o", torrent, "-l", piece_length, input_dir]
+    command = ["mktorrent", "-s", "RED", "-p", "-a", tracker_url, "-o", torrent, "-l", str(piece_length), input_dir]
     subprocess.check_output(command, stderr=subprocess.STDOUT)
     return torrent
 
