@@ -109,7 +109,7 @@ class RedactedAPI:
         return self.__request("torrent", id=torrent_id)
 
 
-    def upload(self, group, torrent, new_torrent, format, description=[]):
+    def upload(self, group, torrent, new_torrent, format, description, dry_run):
 
 # dryrun - (bool) Only return the derived information from the posted data without actually uploading the torrent.
 # file_input - (file) .torrent file contents
@@ -123,6 +123,7 @@ class RedactedAPI:
 # year - (int) Album "Initial Year"
 # releasetype - (int) index of release type (Album, Soundtrack, EP, ...)
 # unknown - (bool) Unknown Release
+# vanity_house - (bool) is this a Vanity House release?
 
 # Todo: figure out values for below - seem to be on the torrent, not the group
 # remaster_year - (int) Edition year
@@ -139,7 +140,6 @@ class RedactedAPI:
 # extra_format[]
 # extra_bitrate[]
 # extra_release_desc[]
-# vanity_house - (bool) is this a Vanity House release?
 # media - (str) CD, DVD, Vinyl, etc
 # tags - (str)
 # image - (str) link to album art
@@ -149,7 +149,6 @@ class RedactedAPI:
 # requestid - (int) requestID being filled
 
         form = {
-            'dryrun' : True,
             'groupid' : group["group"]["id"],
             #'type' : group["group"]["categoryId"],
             #'artists' : [a["name"] for a in group["group"]["musicInfo"]["artists"]],
@@ -158,6 +157,7 @@ class RedactedAPI:
             #'year' : group["year"],
             #'releaseType' : group["group"]["releaseType"],
             #'unknown' : False,
+            #'vanity_house': group['group']['vanityHouse']
             'remaster_year': str(torrent['remasterYear']),
             'remaster_title': torrent['remasterTitle'],
             'remaster_record_label': torrent['remasterRecordLabel'],
@@ -166,12 +166,14 @@ class RedactedAPI:
             'bitrate': formats[format]['encoding'],
             'media': torrent['media'],
             'vbr': format == 'V0',
-            'logfiles': [],
-            'vanity_house': group['group']['vanityHouse']
+            'logfiles': []
         }
         release_desc = '\n'.join(description)
         if release_desc:
             form['release_desc'] = release_desc
+
+        if dry_run:
+            form['dryrun'] = True
 
         # Open the torrent file and send the request
         with open(new_torrent, "rb") as torrent_file:

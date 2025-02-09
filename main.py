@@ -15,9 +15,6 @@ def server_mode(api, seen):
     run_webserver(api, seen, data_dirs, output_dir, torrent_dir)
 
 def script_mode(api, seen):
-    upload_torrent = not args.no_upload
-    single = args.single
-
     print("Searching for transcode candidates...")
     if args.release_urls:
         print("You supplied one or more release URLs, ignoring your configuration's media types.")
@@ -26,10 +23,9 @@ def script_mode(api, seen):
     else:
         candidates = api.seeding(skip=seen)
 
-    find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_dir, torrent_dir, upload_torrent, single)
+    find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_dir, torrent_dir, args.upload, args.single)
 
 def main():
-    print("Logging in to RED...")
     api = redactedapi.RedactedAPI(api_key)
 
     try:

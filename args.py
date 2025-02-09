@@ -37,9 +37,9 @@ def parse_args(args=None):
 
   script.add_argument(
     '-U',
-    '--no-upload',
+    '--upload',
     action='store_true',
-    help="don't upload new torrents (in case you want to do it manually)"
+    help="upload new torrents (dry-run mode is by default if not specified)"
   )
 
   script.add_argument(

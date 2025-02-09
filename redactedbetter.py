@@ -123,14 +123,10 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
                         break
 
                     new_torrent = transcode.make_torrent(transcode_dir, tmpdir, api.tracker, api.passkey)
-
-                    if upload_torrent:
-                        permalink = redactedapi.permalink(torrent["id"])
-                        description = create_description(flac_dir, format, permalink)
-                        #pprint(group)
-                        #pprint(torrent)
-                        result = api.upload(group, torrent, new_torrent, format, description)
-                        pprint(result.text)
+                    permalink = redactedapi.permalink(torrent["id"])
+                    description = create_description(flac_dir, format, permalink)
+                    result = api.upload(group, torrent, new_torrent, format, description, not upload_torrent)
+                    pprint(result.text)
 
                     shutil.copy(new_torrent, torrent_dir)
                     print("done!")
