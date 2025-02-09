@@ -56,6 +56,7 @@ def border_msg(msg):
 # todo: move api, seen etc... into a class for passing around
 #
 def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_dir, torrent_dir, upload_torrent, single):
+    new_torrents = []
     for groupId, torrentId in candidates:
         group = api.torrent_group(groupId)
         if group is not None:
@@ -128,7 +129,8 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
                     result = api.upload(group, torrent, new_torrent, format, description, not upload_torrent)
                     pprint(result.text)
 
-                    shutil.copy(new_torrent, torrent_dir)
+                    new_torrent_dest = shutil.copy(new_torrent, torrent_dir)
+                    new_torrents.append(new_torrent_dest)
                     print("done!")
                     if single: break
                 except Exception as e:
@@ -139,3 +141,4 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
             #todo re-enable cache. Need to make args.cache available here
             #seen.add(str(torrentId))
             #pickle.dump(seen, open(args.cache, 'wb'))
+    return new_torrents

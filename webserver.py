@@ -46,8 +46,14 @@ def webhook():
   candidates = [(int(group_id), int(torrent_id))]
 
   try:
-    find_and_upload_missing_transcodes(candidates, config['api'], config['seen'], config['data_dirs'], config['output_dir'], config['torrent_dir'], upload, single)
-    return http_success("Success", 201)
+    new_torrents = find_and_upload_missing_transcodes(
+      candidates, config['api'], config['seen'], config['data_dirs'], config['output_dir'], config['torrent_dir'], upload, single)
+
+    if len(new_torrents) == 0:
+      result = {"message": "No available transcodes to better", "torrent_files": new_torrents}, 200
+    else:
+      result = {"message": "Success", "torrent_files": new_torrents}, 201
+    return result
   except Exception as e:
     return http_error(str(e), 500)
 
@@ -55,9 +61,6 @@ def webhook():
 @app.errorhandler(404)
 def page_not_found(_e):
   return http_error("Not found", 404)
-
-def http_success(message, code):
-  return {"status": "success", "message": message}, code
 
 
 def http_error(message, code):
