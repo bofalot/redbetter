@@ -1,0 +1,20 @@
+services:
+  redbetter:
+    image: bofalot/redbetter:latest
+    container_name: redbetter
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/Downloads:/downloads
+      - /mnt/user/appdata/redbetter:/config
+      - /mnt/user/Downloads/Redacted:/transcodes
+    environment:
+      TZ: 'Asia/Seoul'
+    ports:
+      - '9725:9725'
+    command:
+      - /app/main.py
+      - --config
+      - /config/config.ini
+      - --cache
+      - /config/cache
+

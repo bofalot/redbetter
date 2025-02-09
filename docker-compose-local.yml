@@ -4,8 +4,9 @@ services:
     container_name: redbetter
     restart: unless-stopped
     volumes:
-      - /mnt/user/Downloads:/downloads
-      - /mnt/user/appdata/redbetter:/config
+      - /Volumes/Downloads:/downloads
+      - /Users/matthew/PycharmProjects/redbetter/docker:/config
+      - /Users/matthew/PycharmProjects/redbetter/transcodes:/transcodes
     environment:
       TZ: 'Asia/Seoul'
     ports:

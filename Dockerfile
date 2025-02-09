@@ -16,5 +16,3 @@ ADD . /app
 USER nobody
 
 EXPOSE 9725
-
-CMD ["/app/redactedbetter --server"]

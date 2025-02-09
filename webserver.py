@@ -24,8 +24,8 @@ def webhook():
   config = app.config
   request_form = request.form.to_dict()
   torrent_url = request_form.get("torrent_url")
-  upload = request_form.get("upload", __default=False)
-  single = request_form.get("single", __default=False)
+  upload = bool(request_form.get("upload"))
+  single = bool(request_form.get("single"))
 
   def is_valid_url(url):
     a = re.findall(r'https://(redacted\.sh|orpheus.network)\/torrents.php\?torrentid=(\d+)', url)
@@ -46,7 +46,7 @@ def webhook():
   candidates = [(int(group_id), int(torrent_id))]
 
   try:
-    find_and_upload_missing_transcodes(candidates, config.api, config.seen, config.data_dirs, config.output_dir, config.torrent_dir, upload, single)
+    find_and_upload_missing_transcodes(candidates, config['api'], config['seen'], config['data_dirs'], config['output_dir'], config['torrent_dir'], upload, single)
     return http_success("Success", 201)
   except Exception as e:
     return http_error(str(e), 500)
@@ -55,7 +55,6 @@ def webhook():
 @app.errorhandler(404)
 def page_not_found(_e):
   return http_error("Not found", 404)
-
 
 def http_success(message, code):
   return {"status": "success", "message": message}, code
