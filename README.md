@@ -1,141 +1,122 @@
-![REDBetter Logo](logo.jpg)
+# REDBetter
 
-## Introduction
+![REDBetter Logo](logo.png)
 
-This repository contains my personal fork of the REDBetter script, originally developed for What.CD by zacharydenton and updated by Mechazawa.
+REDBetter is a Python script that automatically transcodes and uploads FLAC torrents to redacted.ch. It can be run as a one-time script or as a web server that listens for webhook notifications.
 
----
-REDBetter is a script which searches your torrent download directory for any FLAC torrents which do not have transcodes, then automatically transcodes and uploads the torrents to redacted.ch.
+## Features
+
+*   Automatically transcodes FLAC torrents to V0 and 320kbps MP3.
+*   Can be run as a one-time script to process all seeding torrents or specific releases.
+*   Can be run as a web server to transcode on demand via webhook notifications.
+*   Supports Docker for easy setup and deployment.
+*   Caches transcoded torrents to avoid duplicate work.
 
 ## Dependencies
 
-* Python 2.7 or newer
-* `mktorrent`
-* `mechanize`, `mutagen`, `requests` and `Unidecode` Python modules
-* `lame`, `sox` and `flac`
+*   Python 3.6+
+*   `mktorrent`
+*   `lame`, `sox`, and `flac`
 
+## Installation
 
-## Installation Instructions
+1.  **Clone the repository:**
 
-#### 1. Install Python
+    ```bash
+    git clone https://github.com/your-username/redbetter.git
+    cd redbetter
+    ```
 
-Python is available [here](https://www.python.org/downloads/).
+2.  **Install the dependencies:**
 
+    *   **mktorrent, lame, sox, flac:**
 
-#### 2. Install `mktorrent`
+        On Debian/Ubuntu:
 
-`mktorrent` must be built from source, rather than installed using a package manager. For Linux systems, run the following commands in a temporary directory:
+        ```bash
+        sudo apt-get install mktorrent lame sox flac
+        ```
 
-~~~~
-$> git clone git@github.com:Rudde/mktorrent.git
-$> cd mktorrent
-$> make && sudo make install
-~~~~
+        On macOS:
 
-If you are on a seedbox and you lack the privileges to install packages, you are best off contacting your seedbox provider and asking them to install the listed packages.
+        ```bash
+        brew install mktorrent lame sox flac
+        ```
 
-#### 3. Install `mechanize`, `mutagen`, `requests` and `Unidecode` Python modules
+    *   **Python dependencies:**
 
-Depending on your user privileges you may need to use sudo, as shown below
+        ```bash
+        pip install -r requirements.txt
+        ```
 
-~~~~
-sudo -H pip install -r requirements.txt
-~~~~
+3.  **Configure the application:**
 
+    Copy the example configuration file:
 
-#### 4. Install `lame`, `sox` and `flac`
+    ```bash
+    cp config.example config.ini
+    ```
 
-These should all be available on your package manager of choice:
-  * Debian: `sudo apt-get install lame sox flac`
-  * Ubuntu: `sudo apt install lame sox flac`
-  * macOS: `brew install lame sox flac`
-
-
-
-## Configuration
-Run REDBetter by running the script included when you cloned the repository:
-
-    $> ./redactedbetter
-
-You will receive a notification stating that you should edit the configuration file located at:
-
-    ~/.redactedbetter/config
-
-Open this file in your preferred text editor, and configure as desired. The options are as follows:
-* `username`: Your redacted.ch username.
-* `password`: Your redacted.ch password.
-* `data_dir`: The directory where your torrent downloads are stored.
-* `output_dir`: The directory where the transcoded torrent files will be stored. If left blank, it will use the value of `data_dir`.
-* `torrent_dir`: The directory where the generated `.torrent` files are stored.
-* `formats`: A comma space (`, `) separated list of formats you'd like to transcode to. By default, this will be `flac, v0, 320`. `flac` is included because REDBetter supports converting 24-bit FLAC to 16-bit FLAC. Note that `v2` is not included deliberately - v0 torrents trump v2 torrents per redacted rules.
-* `media`: A comma space (`, `) separated list of media types you want to consider for transcoding. The default value is all redacted lossless formats, but if you want to transcode only CD and vinyl media, for example, you would set this to `cd, vinyl`.
-* `24bit_behaviour`: Defines what happens when the program encounters a FLAC that it thinks is 24-bit. If it is set to `2`, every FLAC that has a bit depth of 24 will be silently re-categorized. If it is set to `1`, a prompt wil appear. The default is `0` which ignores these occurrences.
+    Then, edit `config.ini` with your redacted.ch API key and other settings.
 
 ## Usage
-~~~~
-usage: redactedbetter [-h] [-s] [-j THREADS] [--config CONFIG] [--cache CACHE]
-                      [-U] [-E] [--version]
-                      [release_urls [release_urls ...]]
 
-positional arguments:
-  release_urls          the URL where the release is located (default: None)
+### Script Mode
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -s, --single          only add one format per release (useful for getting
-                        unique groups) (default: False)
-  -j THREADS, --threads THREADS
-                        number of threads to use when transcoding (default: 3)
-  --config CONFIG       the location of the configuration file (default:
-                        /home/taylor/.redactedbetter/config)
-  --cache CACHE         the location of the cache (default:
-                        /home/taylor/.redactedbetter/cache)
-  -U, --no-upload       don't upload new torrents (in case you want to do it
-                        manually) (default: False)
-  -E, --no-24bit-edit   don't try to edit 24-bit torrents mistakenly labeled
-                        as 16-bit (default: False)
-  --version             show program's version number and exit
-~~~~
+To run REDBetter as a one-time script, use the `--script` flag:
 
-### Examples
+```bash
+python main.py --script
+```
 
-To transcode and upload everything you have in your download directory (it could take a while):
+This will scan all your seeding torrents and transcode any missing formats.
 
-    $> ./redactedbetter
+To transcode a specific release, provide the release URL:
 
-To transcode and upload a specific release (provided you have already downloaded the FLAC and it is located in your `data_dir`):
+```bash
+python main.py --script --release-urls <release_url_1> <release_url_2>
+```
 
-    $> ./redactedbetter http://redacted.ch/torrents.php?id=1000\&torrentid=1000000
+By default, the script runs in dry-run mode. To actually upload the transcoded torrents, use the `--upload` flag:
 
-Note that if you specify a particular release, redactedbetter will ignore your configuration's media types and attempt to transcode the releases you have specified regardless of their media type (so long as they are lossless types).
+```bash
+python main.py --script --upload
+```
 
-REDBetter caches the results of your transcodes, and will skip any transcodes it believes it's already finished. This makes subsequent runs much faster than the first, especially with large download directories. However, if you do run into errors when running the script, sometimes you will find that the cache thinks the torrent it crashed on previously was uploaded - so it skips it. A solution would be to manually specify the release as mentioned above. If you have multiple issues like this, you can remove the cache:
+### Server Mode
 
-    $> ./redactedbetter ~/.redactedbetter/cache
+To run REDBetter as a web server, simply run:
 
-Beware though, this will cause the script to re-check every download as it does on the first run.
+```bash
+python main.py
+```
 
-### Docker example
+The server will listen on port 9725 for webhook notifications. To trigger a transcode, send a POST request to `/api/webhook` with the following form data:
 
-~~~
-  $> cp docker-compose.override.example.yml docker-compose.override.yml
-  $> $EDITOR docker-compose.override.yml
+*   `torrent_url`: The URL of the torrent to transcode.
+*   `upload` (optional): Set to `true` to upload the transcoded torrent.
+*   `single` (optional): Set to `true` to only transcode one format.
 
-    # Change the volume mounts to your custom values
-    # Use your own 'user: uid:gid' pair
+## Docker
 
-  $> mkdir ~/.redactedbetter
-  $> chmod go-rx ~/.redactedbetter
-  $> $EDITOR ~/.redactedbetter/config
+To run REDBetter with Docker, first build the image:
 
-    # Configure your username and password. Paths in this configuration file
-    # are valid inside the container, you shouldn't have to change them if you
-    # properly configured the volumes previously. (docker-compose.override.yml)
+```bash
+docker-compose build
+```
 
-  $> docker-compose build
-  $> docker-compose run --rm redbetter
-~~~
+Then, run the application using `docker-compose`:
 
-## Bugs and feature requests
+```bash
+docker-compose run --rm redbetter
+```
 
-If you have any issues using the script, or would like to suggest a feature, feel free to open an issue in the issue tracker, *provided that you have searched for similar issues already*.
+You can also use the `docker-compose-local.yml` file for local development:
+
+```bash
+docker-compose -f docker-compose-local.yml up
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to open an issue or submit a pull request.

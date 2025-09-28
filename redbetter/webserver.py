@@ -24,8 +24,8 @@ def webhook():
   config = app.config
   request_form = request.form.to_dict()
   torrent_url = request_form.get("torrent_url")
-  upload = bool(request_form.get("upload"))
-  single = bool(request_form.get("single"))
+  upload = request_form.get("upload", "false").lower() == "true"
+  single = request_form.get("single", "false").lower() == "true"
 
   def is_valid_url(url):
     a = re.findall(r'https://(redacted\.sh|orpheus.network)\/torrents.php\?torrentid=(\d+)', url)

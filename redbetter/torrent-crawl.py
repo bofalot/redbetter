@@ -1,12 +1,12 @@
 #!/usr/bin/env python2.7
 
-import sys
-import os
-import configparser
-import json
-import argparse
+#import sys
+#import os
+#import configparser
+#import json
+#import argparse
 
-from redactedapi import RedactedAPI
+#from api import RedAPI
 
 #
 # This crawls the better list to find albums which can be downloaded and then transcoded.

@@ -1,6 +1,6 @@
 services:
   redbetter:
-    image: bofalot/redbetter:latest
+    image: redbetter:local
     container_name: redbetter
     restart: unless-stopped
     volumes:
@@ -12,9 +12,8 @@ services:
     ports:
       - '9725:9725'
     command:
-      - /app/main.py
+      - /app/redbetter/main.py
       - --config
       - /config/config.ini
       - --cache
       - /config/cache
-

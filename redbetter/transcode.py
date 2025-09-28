@@ -348,15 +348,11 @@ def transcode_release(flac_dir, output_dir, basename, output_format, max_threads
         shutil.rmtree(transcode_dir)
         raise
 
-def make_torrent(input_dir, output_dir, tracker, passkey, piece_length=15):
+def make_torrent(input_dir, output_dir, announce_url, piece_length=15):
     torrent = os.path.join(output_dir, os.path.basename(input_dir)) + ".torrent"
     if not os.path.exists(os.path.dirname(torrent)):
         os.mkdir(os.path.dirname(torrent))
-    tracker_url = '%(tracker)s/%(passkey)s/announce' % {
-        'tracker' : tracker,
-        'passkey' : passkey,
-    }
-    command = ["mktorrent", "-s", "RED", "-p", "-a", tracker_url, "-o", torrent, "-l", str(piece_length), input_dir]
+    command = ["mktorrent", "-s", "RED", "-p", "-a", announce_url, "-o", torrent, "-l", str(piece_length), input_dir]
     subprocess.check_output(command, stderr=subprocess.STDOUT)
     return torrent
 

@@ -1,3 +1,4 @@
+import re
 import pickle
 import os
 import shutil
@@ -8,7 +9,29 @@ from pprint import pprint
 
 import tagging
 import transcode
-import redactedapi
+
+formats = {
+    'FLAC': {
+        'format': 'FLAC',
+        'encoding': 'Lossless'
+    },
+    'V0': {
+        'format' : 'MP3',
+        'encoding' : 'V0 (VBR)'
+    },
+    '320': {
+        'format' : 'MP3',
+        'encoding' : '320'
+    }
+}
+
+def allowed_transcodes(torrent):
+    """Some torrent types have transcoding restrictions."""
+    preemphasis = re.search(r"pre[- ]?emphasi(s(ed)?|zed)", torrent['remasterTitle'], flags=re.IGNORECASE)
+    if preemphasis:
+        return []
+    else:
+        return formats.keys()
 
 
 def create_description(flac_dir, format, permalink):
@@ -37,9 +60,9 @@ def formats_needed(torrents, torrent, supported_formats):
 
     others = filter(same_group, torrents)
     current_formats = set((t['format'], t['encoding']) for t in others)
-    missing_formats = [format for format, details in [(f, redactedapi.formats[f]) for f in supported_formats]\
+    missing_formats = [format for format, details in [(f, formats[f]) for f in supported_formats]\
                            if (details['format'], details['encoding']) not in current_formats]
-    allowed_formats = redactedapi.allowed_transcodes(torrent)
+    allowed_formats = allowed_transcodes(torrent)
     return [format for format in missing_formats if format in allowed_formats]
 
 def border_msg(msg):
@@ -55,6 +78,8 @@ def border_msg(msg):
 #
 # todo: move api, seen etc... into a class for passing around
 #
+import html
+
 def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_dir, torrent_dir, upload_torrent, single):
     new_torrents = []
     for groupId, torrentId in candidates:
@@ -65,7 +90,7 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
             release_artist = "Release artist(s): %s" % group["artist"]
             release_name   = "Release name     : %s" % group["name"]
             release_year   = "Release year     : %s" % group["year"]
-            release_url    = "Release URL      : %s" % redactedapi.release_url(groupId, torrentId)
+            release_url    = "Release URL      : %s" % api.release_url(groupId, torrentId)
             print("\n\n")
             print(border_msg(release_artist + "\n" + release_name + "\n" + release_year + "\n" + release_url))
 
@@ -76,7 +101,7 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
             data_dir_found = False
             flac_dir = None
             for data_dir in data_dirs:
-                flac_dir = os.path.join(data_dir, redactedapi.unescape(torrent["filePath"]))
+                flac_dir = os.path.join(data_dir, html.unescape(torrent["filePath"]))
                 if os.path.exists(flac_dir):
                     data_dir_found = True
                     break
@@ -123,8 +148,8 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
                         print("Some file(s) in this release were incorrectly marked as 24bit - skipping")
                         break
 
-                    new_torrent = transcode.make_torrent(transcode_dir, tmpdir, api.tracker, api.passkey)
-                    permalink = redactedapi.permalink(torrent["id"])
+                    new_torrent = transcode.make_torrent(transcode_dir, tmpdir, api.announce_url)
+                    permalink = api.permalink(torrent["id"])
                     description = create_description(flac_dir, format, permalink)
                     result = api.upload(group, torrent, new_torrent, format, description, not upload_torrent)
                     pprint(result.text)

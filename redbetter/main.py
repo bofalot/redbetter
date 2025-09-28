@@ -7,7 +7,7 @@ from args import parse_args
 from config import parse_config
 from webserver import run_webserver
 
-import redactedapi
+from api import RedAPI
 from redactedbetter import find_and_upload_missing_transcodes
 
 def server_mode(api, seen):
@@ -26,7 +26,7 @@ def script_mode(api, seen):
     find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_dir, torrent_dir, args.upload, args.single)
 
 def main():
-    api = redactedapi.RedactedAPI(api_key)
+    api = RedAPI(api_key)
 
     try:
         seen = pickle.load(open(args.cache))
