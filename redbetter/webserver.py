@@ -6,7 +6,7 @@ from flask import Flask, request
 
 from api import RedAPI, OpsAPI
 import config
-from redactedbetter import find_and_upload_missing_transcodes, find_transcode_candidates
+from redactedbetter import find_and_upload_missing_transcodes, find_transcode_candidates, get_transcode_candidates
 
 app = Flask(__name__)
 
@@ -20,6 +20,27 @@ def log_request_info():
 def log_response_info(response):
   app.logger.info(f"Responding: {response.get_data()}")
   return response
+
+
+@app.route("/api/getCandidates", methods=["GET"])
+def get_candidates():
+    site = request.args.get("site", "all")
+    limit = request.args.get("limit", type=int)
+    offset = request.args.get("offset", type=int)
+    if site not in ["red", "ops", "all"]:
+        return http_error("Invalid site parameter", 400)
+
+    red_api = app.config["red_api"]
+    ops_api = app.config["ops_api"]
+    seen = app.config["seen"]
+    results = []
+
+    if site in ["red", "all"]:
+        results.extend(get_transcode_candidates(red_api, seen, limit=limit, offset=offset))
+    if site in ["ops", "all"]:
+        results.extend(get_transcode_candidates(ops_api, seen, limit=limit, offset=offset))
+
+    return {"candidates": results}, 200
 
 
 @app.route("/api/transcode/all", methods=["POST"])

@@ -81,9 +81,28 @@ def border_msg(msg):
     return "+{dash}+\n{msg}\n+{dash}+".format(dash=dash,msg=msg)
 
 
-def find_transcode_candidates(api, seen):
+def find_transcode_candidates(api, seen, limit=None, offset=None):
     print("Searching for transcode candidates...")
-    return api.seeding(skip=seen)
+    return api.seeding(skip=seen, limit=limit, offset=offset)
+
+def get_transcode_candidates(api, seen, limit=None, offset=None):
+    candidates = find_transcode_candidates(api, seen, limit=limit, offset=offset)
+    results = []
+    for group_id, torrent_id in candidates:
+        group = api.torrent_group(group_id)
+        if group is not None:
+            torrent = next(filter(lambda t: t["id"] == torrent_id, group["torrents"]))
+            needed = formats_needed(group["torrents"], torrent, ["V0", "320"])
+            if needed:
+                results.append({
+                    'groupId': group_id,
+                    'torrentId': torrent_id,
+                    'name': f'{group["artist"]} - {group["name"]}',
+                    'torrentUrl': api.release_url(group_id, torrent_id),
+                    'needed': needed,
+                })
+    return results
+
 
 def find_and_upload_missing_transcodes(candidates, api, seen, upload_torrent, single, add_to_qbittorrent):
     data_dirs = config.get_data_dirs()

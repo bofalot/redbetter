@@ -1,8 +1,27 @@
 import json
 from math import exp
 from time import time, sleep
+import logging
 
 import requests
+
+# Create a logger
+logger = logging.getLogger(__name__)
+
+class GazelleAPIError(Exception):
+    pass
+
+def handle_error(description, exception_details=None, wait_time=None, extra_description="", should_raise=False):
+    """Handles errors by logging them and optionally raising an exception."""
+    error_message = f"{description}{extra_description}"
+    if exception_details:
+        error_message += f": {exception_details}"
+    logger.error(error_message)
+    if should_raise:
+        raise GazelleAPIError(error_message)
+    if wait_time:
+        logger.info(f"Waiting for {wait_time} seconds before retrying...")
+        sleep(wait_time)
 
 formats = {
     'FLAC': {
@@ -54,8 +73,13 @@ class GazelleAPI:
   def find_torrent(self, torrent_hash: str) -> dict:
     return self.__get("torrent", hash=torrent_hash)
 
-  def seeding(self, skip=None):
-      response = self.__get("user_torrents", type="seeding", id=self.get_account_info()['response']['id'])
+  def seeding(self, skip=None, limit=None, offset=None):
+      params = {"type": "seeding", "id": self.get_account_info()['response']['id']}
+      if limit is not None:
+          params['limit'] = limit
+      if offset is not None:
+          params['offset'] = offset
+      response = self.__get("user_torrents", **params)
       if response is None:
           return None
       else:
@@ -66,11 +90,11 @@ class GazelleAPI:
 
   def torrent_group(self, group_id):
       response = self.__get("torrentgroup", id=group_id)
-      if response is None:
+      if response is None or response['status'] != 'success' or not isinstance(response.get('response'), dict):
           return None
-      else:
-          group = response["response"]["group"]
-          torrents = response["response"]["torrents"]
+
+      group = response["response"]["group"]
+      torrents = response["response"]["torrents"]
 
       name = group["name"]
       if len(group["musicInfo"]["artists"]) > 1:
@@ -195,7 +219,7 @@ class GazelleAPI:
 
 
 class OpsAPI(GazelleAPI):
-  def __init__(self, api_key, delay_in_seconds=2):
+  def __init__(self, api_key, delay_in_seconds=1):
     super().__init__(
       site_url="https://orpheus.network",
       tracker_url="https://home.opsfet.ch",
@@ -207,7 +231,7 @@ class OpsAPI(GazelleAPI):
 
 
 class RedAPI(GazelleAPI):
-  def __init__(self, api_key, delay_in_seconds=2):
+  def __init__(self, api_key, delay_in_seconds=1):
     super().__init__(
       site_url="https://redacted.sh",
       tracker_url="https://flacsfor.me",
