@@ -11,7 +11,7 @@ ADD requirements.txt /app
 
 RUN set -x && pip install -r requirements.txt
 
-ADD . /app
+ADD redbetter/* /app
 
 USER nobody
 

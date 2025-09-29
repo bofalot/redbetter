@@ -61,28 +61,6 @@ REDBetter is a Python script that automatically transcodes and uploads FLAC torr
 
 ## Usage
 
-### Script Mode
-
-To run REDBetter as a one-time script, use the `--script` flag:
-
-```bash
-python main.py --script
-```
-
-This will scan all your seeding torrents and transcode any missing formats.
-
-To transcode a specific release, provide the release URL:
-
-```bash
-python main.py --script --release-urls <release_url_1> <release_url_2>
-```
-
-By default, the script runs in dry-run mode. To actually upload the transcoded torrents, use the `--upload` flag:
-
-```bash
-python main.py --script --upload
-```
-
 ### Server Mode
 
 To run REDBetter as a web server, simply run:
@@ -91,11 +69,19 @@ To run REDBetter as a web server, simply run:
 python main.py
 ```
 
-The server will listen on port 9725 for webhook notifications. To trigger a transcode, send a POST request to `/api/webhook` with the following form data:
+The server will listen on port 9725 for webhook notifications. To trigger a transcode, send a POST request to the following endpoints:
 
-*   `torrent_url`: The URL of the torrent to transcode.
-*   `upload` (optional): Set to `true` to upload the transcoded torrent.
-*   `single` (optional): Set to `true` to only transcode one format.
+*   `/api/transcode`: Transcodes a single torrent.
+    *   **Form Data:**
+        *   `torrent_url`: The URL of the torrent to transcode.
+        *   `upload` (optional): Set to `true` to upload the transcoded torrent.
+        *   `single` (optional): Set to `true` to only transcode one format.
+        *   `add_to_qbittorrent` (optional): Set to `true` to add the transcoded torrent to qBittorrent.
+*   `/api/transcode/all`: Transcodes all eligible torrents from your seeding list.
+    *   **Form Data:**
+        *   `upload` (optional): Set to `true` to upload the transcoded torrents.
+        *   `single` (optional): Set to `true` to only transcode one format per release.
+        *   `add_to_qbittorrent` (optional): Set to `true` to add the transcoded torrents to qBittorrent.
 
 ## Docker
 
@@ -120,3 +106,12 @@ docker-compose -f docker-compose-local.yml up
 ## Contributing
 
 Contributions are welcome! Please feel free to open an issue or submit a pull request.
+
+## To-Do
+1. Support for adding transcoded torrents straight to QBitTorrent
+1. Install on seedbox
+1. Weekly job for checking entire snatch list on both Redacted and Orpheus and bettering whatever is possible
+1. Create a WebUI "redbettarr", inspired by *arrs which can:
+   1. Show snatch better list from both Redacted and Orpheus
+   2. Allow the triggering of transcoding and uploading separately
+   3. Displays any errors

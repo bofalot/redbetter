@@ -21,33 +21,6 @@ def parse_args(args=None):
     help="show this help message and exit",
   )
 
-  script = parser.add_argument_group(title="Script Mode")
-  script.add_argument(
-    "--script",
-    action='store_true',
-    help="run in one-time script mode. By default, find all possible torrents to transcode"
-  )
-
-  script.add_argument(
-    '-s',
-    '--single',
-    action='store_true',
-    help='only add one format per release (useful for getting unique groups)'
-  )
-
-  script.add_argument(
-    '-U',
-    '--upload',
-    action='store_true',
-    help="upload new torrents (dry-run mode is by default if not specified)"
-  )
-
-  script.add_argument(
-    "--release-urls",
-    nargs='*',
-    help="list of specific torrents to transcode"
-  )
-
   options = parser.add_argument_group(title="options")
   options.add_argument(
     '-t',

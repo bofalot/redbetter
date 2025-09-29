@@ -3,3 +3,4 @@ mechanize==0.4.6
 mutagen>=1.20
 requests>=1.0
 flask~=3.1.0
+qbittorrent-api

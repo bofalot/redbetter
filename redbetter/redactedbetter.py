@@ -10,6 +10,11 @@ from pprint import pprint
 import tagging
 import transcode
 
+import html
+
+from qbittorrent import QBittorrentClient
+import config
+
 formats = {
     'FLAC': {
         'format': 'FLAC',
@@ -75,12 +80,15 @@ def border_msg(msg):
     dash = "-" * (width - 1)
     return "+{dash}+\n{msg}\n+{dash}+".format(dash=dash,msg=msg)
 
-#
-# todo: move api, seen etc... into a class for passing around
-#
-import html
 
-def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_dir, torrent_dir, upload_torrent, single):
+def find_transcode_candidates(api, seen):
+    print("Searching for transcode candidates...")
+    return api.seeding(skip=seen)
+
+def find_and_upload_missing_transcodes(candidates, api, seen, upload_torrent, single, add_to_qbittorrent):
+    data_dirs = config.get_data_dirs()
+    output_dir = config.get_output_dir()
+    torrent_dir = config.get_torrent_dir()
     new_torrents = []
     for groupId, torrentId in candidates:
         group = api.torrent_group(groupId)
@@ -156,6 +164,13 @@ def find_and_upload_missing_transcodes(candidates, api, seen, data_dirs, output_
 
                     new_torrent_dest = shutil.copy(new_torrent, torrent_dir)
                     new_torrents.append(new_torrent_dest)
+
+                    if add_to_qbittorrent and config.get_qbittorrent_config():
+                        qbt_client = QBittorrentClient(config.get_qbittorrent_config())
+                        if qbt_client.connect():
+                            qbt_client.add_torrent(new_torrent_dest, transcode_dir)
+                            qbt_client.disconnect()
+
                     print("done!")
                     if single: break
                 except Exception as e:
