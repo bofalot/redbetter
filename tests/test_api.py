@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import json
 
-import api
+from redbetter import api
 from redbetter import redactedbetter
 
 

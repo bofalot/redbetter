@@ -1,6 +1,5 @@
-# coding=utf-8
 import unittest
-import transcode
+from redbetter import transcode
 
 
 class TestGetSuitableBasename(unittest.TestCase):
