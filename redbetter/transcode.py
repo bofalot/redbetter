@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import errno
 import multiprocessing
 import os
@@ -355,16 +354,3 @@ def make_torrent(input_dir, output_dir, announce_url, piece_length=15):
     command = ["mktorrent", "-s", "RED", "-p", "-a", announce_url, "-o", torrent, "-l", str(piece_length), input_dir]
     subprocess.check_output(command, stderr=subprocess.STDOUT)
     return torrent
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input_dir')
-    parser.add_argument('output_dir')
-    parser.add_argument('output_format', choices=encoders.keys())
-    parser.add_argument('-j', '--threads', default=multiprocessing.cpu_count(), type=int)
-    args = parser.parse_args()
-
-    transcode_release(os.path.expanduser(args.input_dir), os.path.expanduser(args.output_dir), args.output_format, args.threads)
-
-if __name__ == "__main__": main()
