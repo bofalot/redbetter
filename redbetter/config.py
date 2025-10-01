@@ -2,6 +2,7 @@ import os
 import sys
 import configparser
 
+
 class _Config:
     def __init__(self):
         self.config = None
@@ -52,25 +53,33 @@ class _Config:
     def get_qbittorrent_config(self):
         return self.qbittorrent
 
+
 config = _Config()
+
 
 def load_config(config_file_path):
     config.load_config(config_file_path)
 
+
 def get_redacted_api_key():
     return config.get_redacted_api_key()
+
 
 def get_orpheus_api_key():
     return config.get_orpheus_api_key()
 
+
 def get_data_dirs():
     return config.get_data_dirs()
+
 
 def get_output_dir():
     return config.get_output_dir()
 
+
 def get_torrent_dir():
     return config.get_torrent_dir()
+
 
 def get_qbittorrent_config():
     return config.get_qbittorrent_config()

@@ -112,7 +112,6 @@ docker-compose -f docker-compose-local.yml up
 Contributions are welcome! Please feel free to open an issue or submit a pull request.
 
 ## To-Do
-1. Figure out how to properly run the unit tests and document it in the README.md file
 1. Support for adding transcoded torrents straight to QBitTorrent
 1. Figure out whether to keep the cache functionality or not, or replace it with an SQLite DB
 1. Install on seedbox

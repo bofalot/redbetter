@@ -9,10 +9,13 @@ import mutagen.mp3
 import mutagen.id3
 from mutagen.easyid3 import EasyID3
 
-numeric_tags = {'tracknumber', 'discnumber', 'tracktotal', 'totaltracks', 'disctotal', 'totaldiscs'}
+numeric_tags = {'tracknumber', 'discnumber', 'tracktotal',
+                'totaltracks', 'disctotal', 'totaldiscs'}
+
 
 class TaggingException(Exception):
     pass
+
 
 def valid_fractional_tag(value):
     # m or m/n
@@ -20,6 +23,7 @@ def valid_fractional_tag(value):
         return True
     else:
         return False
+
 
 def scrub_tag(name, value):
     """Strip whitespace (and other common problems) from tag values.
@@ -44,6 +48,7 @@ def scrub_tag(name, value):
 
     return scrubbed_value
 
+
 def check_tags(filename, check_tracknumber_format=True):
     """Verify that the file has the required redacted.sh tags.
 
@@ -65,24 +70,25 @@ def check_tags(filename, check_tracknumber_format=True):
 
     return True, None
 
+
 def copy_tags(flac_file, transcode_file):
     flac_info = mutagen.flac.FLAC(flac_file)
     transcode_ext = os.path.splitext(transcode_file)[1].lower()
 
     if transcode_ext == '.flac':
         transcode_info = mutagen.flac.FLAC(transcode_file)
-        valid_key_fn = lambda k: True
+        def valid_key_fn(k): return True
 
     elif transcode_ext == '.mp3':
         transcode_info = mutagen.mp3.EasyMP3(transcode_file)
-        valid_key_fn = lambda k: k in EasyID3.valid_keys.keys()
+        def valid_key_fn(k): return k in EasyID3.valid_keys.keys()
 
     else:
         raise TaggingException('Unsupported tag format "%s"' % transcode_file)
 
     for tag in filter(valid_key_fn, flac_info):
         # scrub the FLAC tags, just to be on the safe side.
-        values = [scrub_tag(tag,v) for v in flac_info[tag]]
+        values = [scrub_tag(tag, v) for v in flac_info[tag]]
         if values and values != [u'']:
             transcode_info[tag] = values
 
@@ -100,48 +106,60 @@ def copy_tags(flac_file, transcode_file):
         if 'tracknumber' in transcode_info.keys():
             totaltracks = None
             if 'totaltracks' in flac_info.keys():
-                totaltracks = scrub_tag('totaltracks', flac_info['totaltracks'][0])
+                totaltracks = scrub_tag(
+                    'totaltracks', flac_info['totaltracks'][0])
             elif 'tracktotal' in flac_info.keys():
-                totaltracks = scrub_tag('tracktotal', flac_info['tracktotal'][0])
+                totaltracks = scrub_tag(
+                    'tracktotal', flac_info['tracktotal'][0])
 
             if totaltracks:
-                transcode_info['tracknumber'] = [u'%s/%s' % (transcode_info['tracknumber'][0], totaltracks)]
+                transcode_info['tracknumber'] = [u'%s/%s' %
+                                                 (transcode_info['tracknumber'][0], totaltracks)]
 
         if 'discnumber' in transcode_info.keys():
             totaldiscs = None
             if 'totaldiscs' in flac_info.keys():
-                totaldiscs = scrub_tag('totaldiscs', flac_info['totaldiscs'][0])
+                totaldiscs = scrub_tag(
+                    'totaldiscs', flac_info['totaldiscs'][0])
             elif 'disctotal' in flac_info.keys():
                 totaldiscs = scrub_tag('disctotal', flac_info['disctotal'][0])
 
             if totaldiscs:
-                transcode_info['discnumber'] = [u'%s/%s' % (transcode_info['discnumber'][0], totaldiscs)]
+                transcode_info['discnumber'] = [u'%s/%s' %
+                                                (transcode_info['discnumber'][0], totaldiscs)]
 
     transcode_info.save()
 
 # EasyID3 extensions for redactedbetter.py.
+
 
 for key, frameid in {
     'albumartist': 'TPE2',
     'album artist': 'TPE2',
     'grouping': 'TIT1',
     'content group': 'TIT1',
-    }.items():
+}.items():
     EasyID3.RegisterTextKey(key, frameid)
+
 
 def comment_get(id3, _):
     return [comment.text for comment in id3['COMM'].text]
 
+
 def comment_set(id3, _, value):
     id3.add(mutagen.id3.COMM(encoding=3, lang='eng', desc='', text=value))
+
 
 def originaldate_get(id3, _):
     return [stamp.text for stamp in id3['TDOR'].text]
 
+
 def originaldate_set(id3, _, value):
     id3.add(mutagen.id3.TDOR(encoding=3, text=value))
+
 
 EasyID3.RegisterKey('comment', comment_get, comment_set)
 EasyID3.RegisterKey('description', comment_get, comment_set)
 EasyID3.RegisterKey('originaldate', originaldate_get, originaldate_set)
-EasyID3.RegisterKey('original release date', originaldate_get, originaldate_set)
+EasyID3.RegisterKey('original release date',
+                    originaldate_get, originaldate_set)

@@ -1,6 +1,7 @@
 import logging
 from qbittorrentapi import Client
 
+
 class QBittorrentClient:
     def __init__(self, config):
         self.config = config
@@ -28,9 +29,11 @@ class QBittorrentClient:
         try:
             with open(torrent_file_path, 'rb') as f:
                 self.client.torrents_add(torrent_files=f, save_path=save_path)
-            logging.info(f'Successfully added torrent {torrent_file_path} to qBittorrent.')
+            logging.info(
+                f'Successfully added torrent {torrent_file_path} to qBittorrent.')
         except Exception as e:
-            logging.error(f'Failed to add torrent {torrent_file_path} to qBittorrent: {e}')
+            logging.error(
+                f'Failed to add torrent {torrent_file_path} to qBittorrent: {e}')
 
     def disconnect(self):
         if self.client:

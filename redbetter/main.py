@@ -5,6 +5,7 @@ from args import parse_args
 import config
 from webserver import run_webserver
 
+
 def main():
     try:
         run_webserver(args)
