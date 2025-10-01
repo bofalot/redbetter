@@ -8,6 +8,36 @@ This document describes the API endpoints for the REDBetter web server.
 
 ## Endpoints
 
+### `/api/getCandidates`
+
+Gets a list of transcode candidates.
+
+*   **URL:** `/api/getCandidates`
+*   **Method:** `GET`
+*   **Query Parameters:**
+    *   `site` (optional): The site to get candidates from. Can be `red`, `ops`, or `all`. Defaults to `all`.
+    *   `limit` (optional): The maximum number of candidates to return.
+    *   `offset` (optional): The offset to start from.
+
+*   **Example Request:**
+
+    ```bash
+    curl -X GET "http://localhost:9725/api/getCandidates?site=red&limit=10"
+    ```
+
+*   **Example Response:**
+
+    ```json
+    {
+        "candidates": [
+            [
+                12345,
+                67890
+            ]
+        ]
+    }
+    ```
+
 ### `/api/transcode`
 
 Transcodes a single torrent.

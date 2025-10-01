@@ -70,6 +70,11 @@ python main.py
 
 The server will listen on port 9725 for webhook notifications. To trigger a transcode, send a POST request to the following endpoints:
 
+*   `/api/getCandidates`: Gets a list of transcode candidates.
+    *   **Query Parameters:**
+        *   `site` (optional): The site to get candidates from. Can be `red`, `ops`, or `all`. Defaults to `all`.
+        *   `limit` (optional): The maximum number of candidates to return.
+        *   `offset` (optional): The offset to start from.
 *   `/api/transcode`: Transcodes a single torrent.
     *   **Form Data:**
         *   `torrent_url`: The URL of the torrent to transcode.
@@ -107,7 +112,6 @@ docker-compose -f docker-compose-local.yml up
 Contributions are welcome! Please feel free to open an issue or submit a pull request.
 
 ## To-Do
-1. Update docs
 1. Figure out how to properly run the unit tests and document it in the README.md file
 1. Support for adding transcoded torrents straight to QBitTorrent
 1. Figure out whether to keep the cache functionality or not, or replace it with an SQLite DB
