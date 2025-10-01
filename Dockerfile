@@ -14,7 +14,7 @@ RUN set -x && pip install -r requirements.txt
 ADD . /app
 
 RUN flake8 redbetter tests
-ENV PYTHONPATH /app
+ENV PYTHONPATH=/app
 RUN pytest
 
 USER nobody

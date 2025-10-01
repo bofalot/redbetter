@@ -4,7 +4,6 @@ import re
 from flask import Flask, request
 
 from .api import RedAPI, OpsAPI
-from . import config
 from .redactedbetter import find_and_upload_missing_transcodes, find_transcode_candidates, get_transcode_candidates
 
 app = Flask(__name__)
@@ -34,20 +33,18 @@ def get_candidates():
     results = []
 
     if site in ["red", "all"]:
-        results.extend(get_transcode_candidates(
-            red_api, limit=limit, offset=offset))
+        results.extend(get_transcode_candidates(red_api, limit=limit, offset=offset))
     if site in ["ops", "all"]:
-        results.extend(get_transcode_candidates(
-            ops_api, limit=limit, offset=offset))
+        results.extend(get_transcode_candidates(ops_api, limit=limit, offset=offset))
 
     return {"candidates": results}, 200
 
 
 @app.route("/api/transcode/all", methods=["POST"])
 def transcode_all():
-    config = app.config
-    red_api = config["red_api"]
-    ops_api = config["ops_api"]
+    app_config = app.config
+    red_api = app_config["red_api"]
+    ops_api = app_config["ops_api"]
     red_candidates = find_transcode_candidates(red_api)
     ops_candidates = find_transcode_candidates(ops_api)
     red_results = _transcode_and_upload(red_candidates, red_api)
@@ -78,15 +75,15 @@ def _transcode_and_upload(candidates, api):
 
 @app.route("/api/transcode", methods=["POST"])
 def transcode():
-    config = app.config
+    app_config = app.config
     request_form = request.form.to_dict()
     torrent_url = request_form.get("torrent_url")
 
     def get_api_from_url(url):
         if 'redacted.sh' in url:
-            return config['red_api']
+            return app_config['red_api']
         elif 'orpheus.network' in url:
-            return config['ops_api']
+            return app_config['ops_api']
         return None
 
     api = get_api_from_url(torrent_url)
@@ -114,19 +111,19 @@ def http_error(message, code):
     return {"status": "error", "message": message}, code
 
 
-def run_webserver(args, host="0.0.0.0", port=9725):
+def run_webserver(app_config, host="0.0.0.0", port=9725):
     app.logger.setLevel(logging.INFO)
 
-    red_api = RedAPI(config.get_redacted_api_key())
-    ops_api = OpsAPI(config.get_orpheus_api_key())
+    red_api = RedAPI(app_config.get_redacted_api_key())
+    ops_api = OpsAPI(app_config.get_orpheus_api_key())
 
     app.config.update({
         'red_api': red_api,
         'ops_api': ops_api,
-        'data_dirs': config.get_data_dirs(),
-        'output_dir': config.get_output_dir(),
-        'torrent_dir': config.get_torrent_dir(),
-        'qbittorrent': config.get_qbittorrent_config(),
+        'data_dirs': app_config.get_data_dirs(),
+        'output_dir': app_config.get_output_dir(),
+        'torrent_dir': app_config.get_torrent_dir(),
+        'qbittorrent': app_config.get_qbittorrent_config(),
     })
 
     app.run(debug=False, host=host, port=port)

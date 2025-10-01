@@ -1,6 +1,7 @@
 import os
 import sys
 import configparser
+import logging
 
 
 class _Config:
@@ -34,6 +35,15 @@ class _Config:
                 'username': self.config.get('qbittorrent', 'username'),
                 'password': self.config.get('qbittorrent', 'password'),
             }
+        logging.info("Loaded configuration:")
+        logging.info(f"  Redacted API Key: {self.redacted_api_key[:4]}..."
+                     f"{self.redacted_api_key[-4:] if self.redacted_api_key else 'N/A'}")
+        logging.info(f"  Orpheus API Key: {self.orpheus_api_key[:4]}..."
+                     f"{self.orpheus_api_key[-4:] if self.orpheus_api_key else 'N/A'}")
+        logging.info(f"  Data Dirs: {self.data_dirs}")
+        logging.info(f"  Output Dir: {self.output_dir}")
+        logging.info(f"  Torrent Dir: {self.torrent_dir}")
+        logging.info(f"  qBittorrent Config: {self.qbittorrent}")
 
     def get_redacted_api_key(self):
         return self.redacted_api_key

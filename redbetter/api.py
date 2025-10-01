@@ -2,11 +2,11 @@ import json
 from math import exp
 from time import time, sleep
 import logging
-
 import requests
 
 # Create a logger
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class GazelleAPIError(Exception):
@@ -50,7 +50,6 @@ class GazelleAPI:
     """
     Methods for interacting with Gazelle-based trackers like RED and OPS.
     """
-
     def __init__(self, site_url, tracker_url, auth_header, rate_limit):
         self._s = requests.session()
         self._s.headers.update(auth_header)
@@ -60,8 +59,7 @@ class GazelleAPI:
 
         self._max_retries = 20
         self._max_retry_time = 600
-        self._retry_wait_time = lambda x: min(
-            int(exp(x)), self._max_retry_time)
+        self._retry_wait_time = lambda x: min(int(exp(x)), self._max_retry_time)
 
         self._announce_url = None
         self.sitename = self.__class__.__name__
@@ -73,7 +71,6 @@ class GazelleAPI:
         """
         Returns the account information of the user. Useful for fetching the passkey for the announce URL.
         """
-
         r = self.__get("index")
         if r["status"] != "success":
             raise AuthenticationError(r["error"])
@@ -82,9 +79,8 @@ class GazelleAPI:
     def find_torrent(self, torrent_hash: str) -> dict:
         return self.__get("torrent", hash=torrent_hash)
 
-    def seeding(self, skip=None, limit=None, offset=None):
-        params = {"type": "seeding", "id": self.get_account_info()[
-            'response']['id']}
+    def seeding(self, limit=None, offset=None):
+        params = {"type": "seeding", "id": self.get_account_info()['response']['id']}
         if limit is not None:
             params['limit'] = limit
         if offset is not None:
@@ -95,9 +91,7 @@ class GazelleAPI:
         else:
             torrents = response["response"]["seeding"]
 
-        not_skipped = torrents if skip is None else filter(
-            lambda t: t["torrentId"] not in skip, torrents)
-        return map(lambda t: [int(t["groupId"]), int(t["torrentId"])], not_skipped)
+        return map(lambda t: [int(t["groupId"]), int(t["torrentId"])], torrents)
 
     def torrent_group(self, group_id):
         response = self.__get("torrentgroup", id=group_id)
@@ -169,8 +163,7 @@ class GazelleAPI:
                 params["action"] = action
 
                 try:
-                    response = self._s.get(
-                        self.api_url, params=params, timeout=self._timeout)
+                    response = self._s.get(self.api_url, params=params, timeout=self._timeout)
 
                     return json.loads(response.text)
                 except requests.exceptions.Timeout as e:
@@ -180,6 +173,7 @@ class GazelleAPI:
                 except requests.exceptions.RequestException as e:
                     err = "Request failed", f"{type(e).__name__}: {e}"
                 except json.JSONDecodeError as e:
+                    logger.error(f"JSONDecodeError: {e}, Response text: {response.text}")
                     err = "JSON decoding of response failed", e
 
                 handle_error(
@@ -192,8 +186,7 @@ class GazelleAPI:
             else:
                 sleep(0.2)
 
-        handle_error(
-            description="Maximum number of retries reached", should_raise=True)
+        handle_error(description="Maximum number of retries reached", should_raise=True)
 
     def __post(self, url, **kwargs):
         current_retries = 1
@@ -236,6 +229,7 @@ class GazelleAPI:
 
 class OpsAPI(GazelleAPI):
     def __init__(self, api_key, delay_in_seconds=1):
+        logger.debug(f"OPS API Key: {api_key[:4]}")
         super().__init__(
             site_url="https://orpheus.network",
             tracker_url="https://home.opsfet.ch",
@@ -248,6 +242,7 @@ class OpsAPI(GazelleAPI):
 
 class RedAPI(GazelleAPI):
     def __init__(self, api_key, delay_in_seconds=1):
+        logger.debug(f"RED API Key: {api_key[:4]}")
         super().__init__(
             site_url="https://redacted.sh",
             tracker_url="https://flacsfor.me",
