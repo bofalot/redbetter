@@ -1,5 +1,4 @@
 import logging
-import pickle
 import re
 
 from flask import Flask, request
@@ -32,15 +31,14 @@ def get_candidates():
 
     red_api = app.config["red_api"]
     ops_api = app.config["ops_api"]
-    seen = app.config["seen"]
     results = []
 
     if site in ["red", "all"]:
         results.extend(get_transcode_candidates(
-            red_api, seen, limit=limit, offset=offset))
+            red_api, limit=limit, offset=offset))
     if site in ["ops", "all"]:
         results.extend(get_transcode_candidates(
-            ops_api, seen, limit=limit, offset=offset))
+            ops_api, limit=limit, offset=offset))
 
     return {"candidates": results}, 200
 
@@ -50,15 +48,14 @@ def transcode_all():
     config = app.config
     red_api = config["red_api"]
     ops_api = config["ops_api"]
-    seen = config["seen"]
-    red_candidates = find_transcode_candidates(red_api, seen)
-    ops_candidates = find_transcode_candidates(ops_api, seen)
-    red_results = _transcode_and_upload(red_candidates, red_api, seen)
-    ops_results = _transcode_and_upload(ops_candidates, ops_api, seen)
+    red_candidates = find_transcode_candidates(red_api)
+    ops_candidates = find_transcode_candidates(ops_api)
+    red_results = _transcode_and_upload(red_candidates, red_api)
+    ops_results = _transcode_and_upload(ops_candidates, ops_api)
     return {"message": "Success", "results": {"red": red_results, "ops": ops_results}}, 200
 
 
-def _transcode_and_upload(candidates, api, seen):
+def _transcode_and_upload(candidates, api):
     request_form = request.form.to_dict()
     upload = request_form.get("upload", "false").lower() == "true"
     single = request_form.get("single", "false").lower() == "true"
@@ -67,7 +64,7 @@ def _transcode_and_upload(candidates, api, seen):
 
     try:
         new_torrents = find_and_upload_missing_transcodes(
-            candidates, api, seen, upload, single, add_to_qbittorrent)
+            candidates, api, upload, single, add_to_qbittorrent)
 
         if len(new_torrents) == 0:
             result = {"message": "No available transcodes to better",
@@ -82,7 +79,6 @@ def _transcode_and_upload(candidates, api, seen):
 @app.route("/api/transcode", methods=["POST"])
 def transcode():
     config = app.config
-    seen = config["seen"]
     request_form = request.form.to_dict()
     torrent_url = request_form.get("torrent_url")
 
@@ -106,7 +102,7 @@ def transcode():
     group_id = response["group"]["id"]
     candidates = [(int(group_id), int(torrent_id))]
 
-    return _transcode_and_upload(candidates, api, seen)
+    return _transcode_and_upload(candidates, api)
 
 
 @app.errorhandler(404)
@@ -124,16 +120,9 @@ def run_webserver(args, host="0.0.0.0", port=9725):
     red_api = RedAPI(config.get_redacted_api_key())
     ops_api = OpsAPI(config.get_orpheus_api_key())
 
-    try:
-        seen = pickle.load(open(args.cache))
-    except (IOError, pickle.UnpicklingError):
-        seen = set()
-        pickle.dump(seen, open(args.cache, 'wb'))
-
     app.config.update({
         'red_api': red_api,
         'ops_api': ops_api,
-        'seen': seen,
         'data_dirs': config.get_data_dirs(),
         'output_dir': config.get_output_dir(),
         'torrent_dir': config.get_torrent_dir(),

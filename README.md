@@ -9,7 +9,7 @@ REDBetter is a Python script that automatically transcodes and uploads FLAC torr
 *   Automatically transcodes FLAC torrents to V0 and 320kbps MP3.
 *   Runs as a web server to transcode on demand via webhook notifications.
 *   Supports Docker for easy setup and deployment.
-*   Caches transcoded torrents to avoid duplicate work.
+
 
 ## Dependencies
 
@@ -113,11 +113,10 @@ Contributions are welcome! Please feel free to open an issue or submit a pull re
 
 ## To-Do
 1. Support for adding transcoded torrents straight to QBitTorrent
-1. Figure out whether to keep the cache functionality or not, or replace it with an SQLite DB
-1. Install on seedbox
-1. Weekly job for checking entire snatch list on both Redacted and Orpheus and bettering whatever is possible
 1. Create a WebUI "redbettarr", inspired by *arrs which can:
    1. Show snatch better list from both Redacted and Orpheus
    2. Allow the triggering of transcoding and uploading separately
    3. Displays any errors
+   4. Cache results
+1. Weekly job for checking entire snatch list on both Redacted and Orpheus and bettering whatever is possible
 1. Crawling for any album which can be downloaded and then transcoded

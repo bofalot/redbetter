@@ -222,7 +222,4 @@ def find_and_upload_missing_transcodes(candidates, api, seen, upload_torrent, si
                 finally:
                     shutil.rmtree(tmpdir)
 
-            # todo re-enable cache. Need to make args.cache available here
-            # seen.add(str(torrentId))
-            # pickle.dump(seen, open(args.cache, 'wb'))
     return new_torrents

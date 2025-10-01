@@ -38,12 +38,5 @@ def parse_args(args=None):
         default='./config.ini'
     )
 
-    options.add_argument(
-        '-k',
-        '--cache',
-        help='the location of the cache',
-        default='./redbetter_cache'
-    )
-
     parsed = parser.parse_args(args)
     return parsed

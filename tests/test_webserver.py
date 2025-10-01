@@ -14,7 +14,6 @@ def client():
                 patch('redbetter.webserver.OpsAPI') as mock_ops_api:
             app.config['red_api'] = mock_red_api
             app.config['ops_api'] = mock_ops_api
-            app.config['seen'] = set()
             yield client
 
 
@@ -26,7 +25,7 @@ def test_get_candidates_red(client):
         data = json.loads(response.data)
         assert data['candidates'] == [{'name': 'red_candidate'}]
         mock_get_candidates.assert_called_once_with(
-            app.config['red_api'], set(), limit=None, offset=None)
+            app.config['red_api'], limit=None, offset=None)
 
 
 def test_get_candidates_ops(client):
@@ -37,7 +36,7 @@ def test_get_candidates_ops(client):
         data = json.loads(response.data)
         assert data['candidates'] == [{'name': 'ops_candidate'}]
         mock_get_candidates.assert_called_once_with(
-            app.config['ops_api'], set(), limit=None, offset=None)
+            app.config['ops_api'], limit=None, offset=None)
 
 
 def test_get_candidates_all(client):
@@ -65,4 +64,4 @@ def test_get_candidates_with_pagination(client):
         response = client.get('/api/getCandidates?site=red&limit=10&offset=5')
         assert response.status_code == 200
         mock_get_candidates.assert_called_once_with(
-            app.config['red_api'], set(), limit=10, offset=5)
+            app.config['red_api'], limit=10, offset=5)

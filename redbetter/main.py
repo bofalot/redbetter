@@ -3,7 +3,7 @@ from colorama import Fore
 import traceback
 from args import parse_args
 import config
-from webserver import run_webserver
+from redbetter.webserver import run_webserver
 
 
 def main():
