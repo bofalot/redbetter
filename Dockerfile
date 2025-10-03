@@ -1,4 +1,13 @@
-FROM python:3.9.21-slim
+# Frontend build stage
+FROM node:18 AS builder
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# Final stage
+FROM python:3.9-slim
 
 RUN set -x \
   && apt-get update \
@@ -7,11 +16,13 @@ RUN set -x \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-ADD requirements.txt /app
+
+COPY --from=builder /app/frontend/build ./frontend/build
+COPY requirements.txt .
 
 RUN set -x && pip install -r requirements.txt
 
-ADD . /app
+COPY . .
 
 RUN flake8 redbetter tests
 ENV PYTHONPATH=/app

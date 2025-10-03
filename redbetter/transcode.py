@@ -371,8 +371,7 @@ def transcode_release(flac_dir, output_dir, basename, output_format, max_threads
                               '.log', '.md5', '.nfo', '.pdf', '.png', '.sfv', '.txt']
         allowed_files = locate(flac_dir, ext_matcher(*allowed_extensions))
         for filename in allowed_files:
-            new_dir = os.path.dirname(filename).replace(
-                flac_dir, transcode_dir)
+            new_dir = os.path.dirname(filename).replace(flac_dir, transcode_dir)
             if not os.path.exists(new_dir):
                 os.makedirs(new_dir)
             shutil.copy(filename, new_dir)

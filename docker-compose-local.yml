@@ -13,7 +13,8 @@ services:
     ports:
       - '9725:9725'
     command:
-      - /app/redbetter/main.py
+      - python3
+      - /app/main.py
       - --config
       - /config/config.ini
 

@@ -4,3 +4,6 @@ docker-compose-seedbox.yml
 docker-compose.*.yml
 logo*
 README.md
+frontend/node_modules
+.venv
+venv

@@ -112,11 +112,15 @@ docker-compose -f docker-compose-local.yml up
 Contributions are welcome! Please feel free to open an issue or submit a pull request.
 
 ## To-Do
-1. Support for adding transcoded torrents straight to QBitTorrent
-1. Create a WebUI "redbettarr", inspired by *arrs which can:
+1. UI
+   1. UI / Typescript Tests
    1. Show snatch better list from both Redacted and Orpheus
-   2. Allow the triggering of transcoding and uploading separately
-   3. Displays any errors
-   4. Cache results
+   1. Allow the triggering of transcoding and uploading separately
+   1. Displays any errors
+   1. Cache results
+
+1. Backend
+   1. Support for adding transcoded torrents straight to QBitTorrent
+
 1. Weekly job for checking entire snatch list on both Redacted and Orpheus and bettering whatever is possible
 1. Crawling for any album which can be downloaded and then transcoded
