@@ -7,7 +7,7 @@ from api.dependencies import get_red_api, get_ops_api
 
 router = APIRouter()
 
-@router.get("/api/getCandidates")
+@router.get("/getCandidates")
 def get_candidates(site: str = Query(..., enum=["red", "ops", "all"]),
                      limit: int = Query(None),
                      offset: int = Query(None),
@@ -20,7 +20,7 @@ def get_candidates(site: str = Query(..., enum=["red", "ops", "all"]),
         results.extend(get_transcode_candidates(ops_api, limit=limit, offset=offset))
     return {"candidates": results}
 
-@router.post("/api/transcode/all")
+@router.post("/transcode/all")
 def transcode_all(red_api: RedAPI = Depends(get_red_api),
                     ops_api: OpsAPI = Depends(get_ops_api),
                     upload: bool = Form(False),
@@ -46,7 +46,7 @@ def _transcode_and_upload(candidates, api, upload, single, add_to_qbittorrent):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/transcode")
+@router.post("/transcode")
 def transcode(red_api: RedAPI = Depends(get_red_api),
               ops_api: OpsAPI = Depends(get_ops_api),
               torrent_url: str = Form(...),

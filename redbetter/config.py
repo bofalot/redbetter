@@ -63,6 +63,32 @@ class _Config:
     def get_qbittorrent_config(self):
         return self.qbittorrent
 
+    def get_sanitized_config(self):
+        sanitized = {
+            "data_dirs": self.data_dirs,
+            "output_dir": self.output_dir,
+            "torrent_dir": self.torrent_dir,
+            "qbittorrent": self.qbittorrent,
+        }
+
+        # Mask API keys
+        if self.redacted_api_key:
+            sanitized["redacted_api_key"] = f"{self.redacted_api_key[:4]}...{self.redacted_api_key[-4:]}"
+        else:
+            sanitized["redacted_api_key"] = "N/A"
+
+        if self.orpheus_api_key:
+            sanitized["orpheus_api_key"] = f"{self.orpheus_api_key[:4]}...{self.orpheus_api_key[-4:]}"
+        else:
+            sanitized["orpheus_api_key"] = "N/A"
+
+        # Mask qBittorrent password
+        if self.qbittorrent and self.qbittorrent.get("password"):
+            sanitized["qbittorrent"]["password"] = \
+                f"{self.qbittorrent['password'][:4]}...{self.qbittorrent['password'][-4:]}"
+
+        return sanitized
+
 
 config = _Config()
 
@@ -93,3 +119,7 @@ def get_torrent_dir():
 
 def get_qbittorrent_config():
     return config.get_qbittorrent_config()
+
+
+def get_sanitized_config():
+    return config.get_sanitized_config()

@@ -10,11 +10,7 @@ services:
     environment:
       TZ: 'Asia/Seoul'
       PYTHONPATH: /app
+      CONFIG_FILE_PATH: /config/config.ini
     ports:
       - '9725:9725'
-    command:
-      - python3
-      - /app/main.py
-      - --config
-      - /config/config.ini
-
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "9725"]

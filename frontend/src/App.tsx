@@ -38,6 +38,14 @@ function App() {
               <td>{config.torrent_dir}</td>
             </tr>
             <tr>
+              <th scope="row">Redacted API Key</th>
+              <td>{config.redacted_api_key}</td>
+            </tr>
+            <tr>
+              <th scope="row">Orpheus API Key</th>
+              <td>{config.orpheus_api_key}</td>
+            </tr>
+            <tr>
               <th scope="row">qBittorrent</th>
               <td>
                 {config.qbittorrent ? (

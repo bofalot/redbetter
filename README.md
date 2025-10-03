@@ -121,6 +121,7 @@ Contributions are welcome! Please feel free to open an issue or submit a pull re
 
 1. Backend
    1. Support for adding transcoded torrents straight to QBitTorrent
+   2. Transcoding to spawn in a different process, using multiple threads.
 
 1. Weekly job for checking entire snatch list on both Redacted and Orpheus and bettering whatever is possible
 1. Crawling for any album which can be downloaded and then transcoded
